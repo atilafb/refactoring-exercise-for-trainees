@@ -5,12 +5,10 @@ class PurchasesController < ApplicationController
 
       cart = Cart.find_by(id: cart_id)
 
-      unless cart
-        return render json: { errors: [{ message: 'Cart not found!' }] }, status: :unprocessable_entity
-      end
+      return render json: { errors: [{ message: 'Cart not found!' }] }, status: :unprocessable_entity unless cart
 
       user = if cart.user.nil?
-               user_params = purchase_params[:user] ? purchase_params[:user] : {}
+               user_params = purchase_params[:user] || {}
                User.create(**user_params.merge(guest: true))
              else
                cart.user
@@ -26,7 +24,7 @@ class PurchasesController < ApplicationController
           city: address_params[:city],
           state: address_params[:state],
           country: address_params[:country],
-          zip: address_params[:zip],
+          zip: address_params[:zip]
         )
 
         cart.items.each do |item|
@@ -44,24 +42,26 @@ class PurchasesController < ApplicationController
         order.save
 
         if order.valid?
-          return render json: { status: :success, order: { id: order.id } }, status: :ok
+          render json: { status: :success, order: { id: order.id } }, status: :ok
         else
-          return render json: { errors: order.errors.map(&:full_message).map { |message| { message: message } } }, status: :unprocessable_entity
+          render json: { errors: order.errors.map(&:full_message).map do |message|
+                                   { message: message }
+                                 end }, status: :unprocessable_entity
         end
       else
-        return render json: { errors: user.errors.map(&:full_message).map { |message| { message: message } } }, status: :unprocessable_entity
+        render json: { errors: user.errors.map(&:full_message).map do |message|
+                                 { message: message }
+                               end }, status: :unprocessable_entity
       end
     elsif purchase_params[:gateway] == 'stripe'
       cart_id = purchase_params[:cart_id]
 
       cart = Cart.find_by(id: cart_id)
 
-      unless cart
-        return render json: { errors: [{ message: 'Cart not found!' }] }, status: :unprocessable_entity
-      end
+      return render json: { errors: [{ message: 'Cart not found!' }] }, status: :unprocessable_entity unless cart
 
       user = if cart.user.nil?
-               user_params = purchase_params[:user] ? purchase_params[:user] : {}
+               user_params = purchase_params[:user] || {}
                User.create(**user_params.merge(guest: true))
              else
                cart.user
@@ -77,7 +77,7 @@ class PurchasesController < ApplicationController
           city: address_params[:city],
           state: address_params[:state],
           country: address_params[:country],
-          zip: address_params[:zip],
+          zip: address_params[:zip]
         )
 
         cart.items.each do |item|
@@ -95,12 +95,16 @@ class PurchasesController < ApplicationController
         order.save
 
         if order.valid?
-          return render json: { status: :success, order: { id: order.id } }, status: :ok
+          render json: { status: :success, order: { id: order.id } }, status: :ok
         else
-          return render json: { errors: order.errors.map(&:full_message).map { |message| { message: message } } }, status: :unprocessable_entity
+          render json: { errors: order.errors.map(&:full_message).map do |message|
+                                   { message: message }
+                                 end }, status: :unprocessable_entity
         end
       else
-        return render json: { errors: user.errors.map(&:full_message).map { |message| { message: message } } }, status: :unprocessable_entity
+        render json: { errors: user.errors.map(&:full_message).map do |message|
+                                 { message: message }
+                               end }, status: :unprocessable_entity
       end
     else
       render json: { errors: [{ message: 'Gateway not supported!' }] }, status: :unprocessable_entity
