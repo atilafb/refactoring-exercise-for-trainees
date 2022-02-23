@@ -13,19 +13,7 @@ class PurchasesController < ApplicationController
 
       if user.valid?
         order = order_create(user, purchase_params)
-
-        cart.items.each do |item|
-          item.quantity.times do
-            order.items << OrderLineItem.new(
-              order: order,
-              sale: item.sale,
-              unit_price_cents: item.sale.unit_price_cents,
-              shipping_costs_cents: shipping_costs,
-              paid_price_cents: item.sale.unit_price_cents + shipping_costs
-            )
-          end
-        end
-
+        cart_order_itens(cart, order)
         order.save
 
         if order.valid?
@@ -82,4 +70,23 @@ class PurchasesController < ApplicationController
       zip: address_params[:zip],
     )
   end
+
+  def item_order_create(order, item)
+    OrderLineItem.new(
+      order: order,
+      sale: item.sale,
+      unit_price_cents: item.sale.unit_price_cents,
+      shipping_costs_cents: shipping_costs,
+      paid_price_cents: item.sale.unit_price_cents + shipping_costs
+    )
+  end
+
+  def cart_order_itens(cart, order)
+    cart.items.each do |item|
+      item.quantity.times do
+        order.items << item_order_create(order, item)
+      end
+    end
+  end
+
 end
