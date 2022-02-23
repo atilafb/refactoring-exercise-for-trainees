@@ -1,9 +1,7 @@
 class PurchasesController < ApplicationController
   def create
     if purchase_params[:gateway] == 'paypal' || purchase_params[:gateway] == 'stripe'
-      cart_id = purchase_params[:cart_id]
-
-      cart = Cart.find_by(id: cart_id)
+      cart = find_cart
 
       unless cart
         return render json: { errors: [{ message: 'Cart not found!' }] }, status: :unprocessable_entity
@@ -12,7 +10,7 @@ class PurchasesController < ApplicationController
       user = user_create(cart, purchase_params)
 
       if user.valid?
-        order = order_create(user, purchase_params)
+        order = order_create(user, address_params)
         cart_order_itens(cart, order)
         order.save
 
@@ -48,6 +46,10 @@ class PurchasesController < ApplicationController
     100
   end
 
+  def find_cart
+    @cart = Cart.find_by(id: purchase_params[:cart_id])
+  end
+
   def user_create(cart, purchase_params)
     user = if cart.user.nil?
       user_params = purchase_params[:user] ? purchase_params[:user] : {}
@@ -57,7 +59,7 @@ class PurchasesController < ApplicationController
     end
   end
   
-  def order_create(user, purchase_params)
+  def order_create(user, address_params)
     order = Order.new(
       user: user,
       first_name: user.first_name,
