@@ -7,11 +7,11 @@ class PurchasesController < ApplicationController
         return render json: { errors: [{ message: 'Cart not found!' }] }, status: :unprocessable_entity
       end
 
-      user = user_create(cart, purchase_params)
+      user = UserCreator.call(cart, purchase_params)
 
       if user.valid?
-        order = order_create(user, address_params)
-        cart_order_itens(cart, order)
+        order = OrderCreator.call(user, address_params)
+        CartOrderItens.call(cart, order)
         order.save
 
         if order.valid?
@@ -42,53 +42,7 @@ class PurchasesController < ApplicationController
     purchase_params[:address] || {}
   end
 
-  def shipping_costs
-    100
-  end
-
   def find_cart
     @cart = Cart.find_by(id: purchase_params[:cart_id])
   end
-
-  def user_create(cart, purchase_params)
-    user = if cart.user.nil?
-      user_params = purchase_params[:user] ? purchase_params[:user] : {}
-      User.create(**user_params.merge(guest: true))
-    else
-      cart.user
-    end
-  end
-  
-  def order_create(user, address_params)
-    order = Order.new(
-      user: user,
-      first_name: user.first_name,
-      last_name: user.last_name,
-      address_1: address_params[:address_1],
-      address_2: address_params[:address_2],
-      city: address_params[:city],
-      state: address_params[:state],
-      country: address_params[:country],
-      zip: address_params[:zip],
-    )
-  end
-
-  def item_order_create(order, item)
-    OrderLineItem.new(
-      order: order,
-      sale: item.sale,
-      unit_price_cents: item.sale.unit_price_cents,
-      shipping_costs_cents: shipping_costs,
-      paid_price_cents: item.sale.unit_price_cents + shipping_costs
-    )
-  end
-
-  def cart_order_itens(cart, order)
-    cart.items.each do |item|
-      item.quantity.times do
-        order.items << item_order_create(order, item)
-      end
-    end
-  end
-
 end
