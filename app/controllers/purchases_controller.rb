@@ -1,30 +1,26 @@
 class PurchasesController < ApplicationController
   def create
-    if purchase_params[:gateway] == 'paypal' || purchase_params[:gateway] == 'stripe'
-      cart = find_cart
+    return render json: { errors: [{ message: 'Gateway not supported!' }] },
+      status: :unprocessable_entity unless valid_gateway
 
-      unless cart
-        return render json: { errors: [{ message: 'Cart not found!' }] }, status: :unprocessable_entity
-      end
+    @cart = Cart.find_by(id: purchase_params[:cart_id])
 
-      user = UserCreator.call(cart, purchase_params)
+    return render json: { errors: [{ message: 'Cart not found!' }] },
+     status: :unprocessable_entity unless @cart
 
-      if user.valid?
-        order = OrderCreator.call(user, address_params)
-        CartOrderItens.call(cart, order)
-        order.save
+    @user = UserCreator.call(@cart, purchase_params)
 
-        if order.valid?
-          return render json: { status: :success, order: { id: order.id } }, status: :ok
-        else
-          return render json: { errors: order.errors.map(&:full_message).map { |message| { message: message } } }, status: :unprocessable_entity
-        end
-      else
-        return render json: { errors: user.errors.map(&:full_message).map { |message| { message: message } } }, status: :unprocessable_entity
-      end
-    else
-      render json: { errors: [{ message: 'Gateway not supported!' }] }, status: :unprocessable_entity
-    end
+    return render json: { errors: @user.errors.map(&:full_message).map { |message| { message: message } } },
+     status: :unprocessable_entity unless @user.valid?
+
+    @order = OrderCreator.call(@user, address_params)
+    CartOrderItens.call(@cart, @order)
+    @order.save
+
+    return render json: { errors: @order.errors.map(&:full_message).map { |message| { message: message } } },
+     status: :unprocessable_entity unless @order.valid?
+
+    return render json: { status: :success, order: { id: @order.id } }, status: :ok
   end
 
   private
@@ -42,7 +38,8 @@ class PurchasesController < ApplicationController
     purchase_params[:address] || {}
   end
 
-  def find_cart
-    @cart = Cart.find_by(id: purchase_params[:cart_id])
+  def valid_gateway
+    permited_gateways = ['paypal', 'stripe']
+    permited_gateways.include?(purchase_params[:gateway])
   end
 end
